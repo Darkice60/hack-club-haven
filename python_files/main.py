@@ -6,6 +6,7 @@ from typing import List, Tuple
 import pygame
 
 from ball import Ghost, MiniGhost, Soul
+from sounds import SoundManager
 from upgrades import UpgradeManager, format_number
 
 # 1000 x 700 window and layout dimensions
@@ -209,28 +210,25 @@ def _draw_wooden_bridge(
     plank_h = 11
     rect = pygame.Rect(x, y, width, plank_h)
 
-    # Support braces & pegs anchored under the walkway at each tree trunk
     for tx in trunk_centers:
         if x + 28 <= tx <= x + width - 28:
-            # Diagonal left and right support struts
             pygame.draw.line(surface, (42, 20, 10), (tx - 38, y + plank_h), (tx - 10, y + 36), 6)
             pygame.draw.line(surface, (148, 82, 36), (tx - 38, y + plank_h), (tx - 10, y + 36), 3)
 
             pygame.draw.line(surface, (42, 20, 10), (tx + 38, y + plank_h), (tx + 10, y + 36), 6)
             pygame.draw.line(surface, (148, 82, 36), (tx + 38, y + plank_h), (tx + 10, y + 36), 3)
 
-            # Small pointed wooden peg directly below the plank
             peg = [(tx - 6, y + plank_h), (tx + 6, y + plank_h), (tx, y + plank_h + 15)]
             pygame.draw.polygon(surface, (156, 86, 38), peg)
             pygame.draw.polygon(surface, (36, 18, 10), peg, width=1)
 
-    # Main horizontal plank beam
     pygame.draw.rect(surface, (158, 86, 38), rect, border_radius=2)
     pygame.draw.line(surface, (206, 128, 62), (x + 2, y + 2), (x + width - 3, y + 2), 2)
-    pygame.draw.line(surface, (96, 48, 20), (x + 2, y + plank_h - 3), (x + width - 3, y + plank_h - 3), 2)
+    pygame.draw.line(
+        surface, (96, 48, 20), (x + 2, y + plank_h - 3), (x + width - 3, y + plank_h - 3), 2
+    )
     pygame.draw.rect(surface, (36, 18, 10), rect, width=2, border_radius=2)
 
-    # Individual vertical plank dividers
     for px in range(x + 18, x + width - 8, 20):
         pygame.draw.line(surface, (52, 26, 13), (px, y + 1), (px, y + plank_h - 2), 2)
 
@@ -247,24 +245,34 @@ def _draw_pumpkin(
     """Draw a ribbed autumn pumpkin or flickering Jack-o'-Lantern sitting on a ledge."""
     cy = bottom_y - radius_y
 
-    # Curved green-brown pumpkin stem
-    stem_pts = [(cx - 3, cy - radius_y + 2), (cx + 2, cy - radius_y - 6), (cx + 6, cy - radius_y - 4), (cx + 2, cy - radius_y + 2)]
+    stem_pts = [
+        (cx - 3, cy - radius_y + 2),
+        (cx + 2, cy - radius_y - 6),
+        (cx + 6, cy - radius_y - 4),
+        (cx + 2, cy - radius_y + 2),
+    ]
     pygame.draw.polygon(surface, (76, 94, 34), stem_pts)
 
-    # Outer dark outline & plump orange body
     body_rect = pygame.Rect(cx - radius_x, cy - radius_y, radius_x * 2, radius_y * 2)
     pygame.draw.ellipse(surface, (182, 74, 20), body_rect)
-    pygame.draw.ellipse(surface, (214, 96, 28), pygame.Rect(cx - radius_x + 4, cy - radius_y + 2, (radius_x - 4) * 2, (radius_y - 3) * 2))
+    pygame.draw.ellipse(
+        surface,
+        (214, 96, 28),
+        pygame.Rect(cx - radius_x + 4, cy - radius_y + 2, (radius_x - 4) * 2, (radius_y - 3) * 2),
+    )
     pygame.draw.ellipse(surface, (42, 18, 8), body_rect, width=2)
 
-    # Vertical pumpkin rib curves
-    pygame.draw.ellipse(surface, (124, 44, 14), pygame.Rect(cx - radius_x // 2, cy - radius_y + 1, radius_x, radius_y * 2 - 2), width=1)
+    pygame.draw.ellipse(
+        surface,
+        (124, 44, 14),
+        pygame.Rect(cx - radius_x // 2, cy - radius_y + 1, radius_x, radius_y * 2 - 2),
+        width=1,
+    )
 
     if is_jack_o_lantern:
         flicker = math.sin(time_sec * 14.0)
         glow_col = (255, 224, 88) if flicker > -0.2 else (255, 168, 44)
 
-        # Flickering flame wisps above the Jack-o'-Lantern
         for idx, (ox, h_scale) in enumerate([(-6, 16), (0, 24), (6, 15)]):
             wave = math.sin(time_sec * 11.0 + idx * 1.7) * 3.0
             flame_pts = [
@@ -280,7 +288,6 @@ def _draw_pumpkin(
             ]
             pygame.draw.polygon(surface, glow_col, inner_pts)
 
-        # Glowing triangular eyes & jagged smile
         left_eye = [(cx - 9, cy - 2), (cx - 5, cy - 8), (cx - 2, cy - 2)]
         right_eye = [(cx + 2, cy - 2), (cx + 5, cy - 8), (cx + 9, cy - 2)]
         pygame.draw.polygon(surface, glow_col, left_eye)
@@ -303,15 +310,10 @@ def draw_autumn_background(
     leaves: List[FallingLeaf],
     time_sec: float = 0.0,
 ) -> None:
-    """
-    Render a rich 16-bit autumn forest backdrop inspired by classic woodland stages:
-    dappled burnt-orange forest shafts, ridged tree trunks with angled branches,
-    red-orange foliage canopies, wooden walkways, and autumn pumpkins.
-    """
+    """Render the 16-bit autumn forest backdrop, wooden walkways, and pumpkins."""
     arena_rect = pygame.Rect(0, 0, PLAY_WIDTH, PLAY_HEIGHT)
     pygame.draw.rect(surface, (44, 19, 11), arena_rect)
 
-    # 1. Distant dappled burnt-orange & sienna woodland backdrop columns
     distant_shafts = [
         (0, 88, (76, 33, 16)),
         (88, 62, (56, 24, 12)),
@@ -324,34 +326,26 @@ def draw_autumn_background(
     ]
     for sx, sw, scol in distant_shafts:
         pygame.draw.rect(surface, scol, pygame.Rect(sx, 0, sw, PLAY_HEIGHT))
-        # Subtle vertical woodland bark/foliage grain streaks
         for gx in range(sx + 8, sx + sw - 4, 14):
             pygame.draw.line(surface, (42, 18, 10), (gx, 40), (gx, PLAY_HEIGHT - 30), 2)
 
-    # Jagged distant tree canopy silhouettes in warm russet
     for bx in range(0, PLAY_WIDTH + 40, 48):
         peak_h = 135 + ((bx * 37) % 65)
         tri = [(bx - 32, 40), (bx + 32, 40), (bx, peak_h)]
         pygame.draw.polygon(surface, (118, 52, 22), tri)
 
-    # 2. Prominent Hero Tree Trunks & Angled Limbs
-    # Left-center main hero tree trunk + right secondary trunk
     trunks = [
         (158, 94),
         (524, 68),
     ]
     for tx, tw in trunks:
-        # Dark outer outline + rich mahogany bark fill
         pygame.draw.rect(surface, (28, 14, 8), pygame.Rect(tx - 3, 0, tw + 6, PLAY_HEIGHT))
         pygame.draw.rect(surface, (58, 30, 17), pygame.Rect(tx, 0, tw, PLAY_HEIGHT))
-
-        # Highlight strip on right side of trunk + vertical bark ridges
         pygame.draw.rect(surface, (78, 42, 23), pygame.Rect(tx + tw - 18, 0, 14, PLAY_HEIGHT))
         for rx in range(tx + 10, tx + tw - 6, 14):
             pygame.draw.line(surface, (34, 17, 10), (rx, 0), (rx, PLAY_HEIGHT), 3)
             pygame.draw.line(surface, (92, 50, 27), (rx + 4, 0), (rx + 4, PLAY_HEIGHT), 1)
 
-    # Angled tree branches reaching out from the main hero trunk (x=158..252)
     left_branch = [(160, 185), (160, 148), (88, 86), (72, 104)]
     pygame.draw.polygon(surface, (58, 30, 17), left_branch)
     pygame.draw.polygon(surface, (28, 14, 8), left_branch, width=2)
@@ -360,7 +354,6 @@ def draw_autumn_background(
     pygame.draw.polygon(surface, (66, 35, 19), right_branch)
     pygame.draw.polygon(surface, (28, 14, 8), right_branch, width=2)
 
-    # 3. Lush Red-Orange Autumn Leaf Clusters on Branches & Top Canopy
     branch_foliage = [
         (82, 82, 38, (148, 44, 18)),
         (104, 72, 32, (186, 68, 22)),
@@ -373,7 +366,6 @@ def draw_autumn_background(
         pygame.draw.circle(surface, (36, 16, 8), (fx, fy), fr + 2)
         pygame.draw.circle(surface, fcol, (fx, fy), fr)
 
-    # Dense overhanging autumn canopy across the top edge
     pygame.draw.rect(surface, (64, 22, 11), pygame.Rect(0, 0, PLAY_WIDTH, 34))
     top_canopy = [
         (24, 16, 44, (138, 42, 16)),
@@ -392,12 +384,10 @@ def draw_autumn_background(
         pygame.draw.circle(surface, (36, 16, 8), (cx, cy), cr + 2)
         pygame.draw.circle(surface, ccol, (cx, cy), cr)
 
-    # 4. Rustic Wooden Boardwalk & Lower Ledge
     trunk_centers = [158 + 94 // 2, 524 + 68 // 2]
     _draw_wooden_bridge(surface, x=0, y=496, width=PLAY_WIDTH, trunk_centers=trunk_centers)
     _draw_wooden_bridge(surface, x=48, y=624, width=350, trunk_centers=trunk_centers)
 
-    # 5. Pumpkins & Flickering Jack-o'-Lantern
     _draw_pumpkin(surface, cx=112, bottom_y=496, radius_x=18, radius_y=14, is_jack_o_lantern=False)
     _draw_pumpkin(
         surface,
@@ -410,14 +400,14 @@ def draw_autumn_background(
     )
     _draw_pumpkin(surface, cx=96, bottom_y=624, radius_x=17, radius_y=13, is_jack_o_lantern=False)
 
-    # 6. Leafy Autumn Forest Floor Undergrowth
     pygame.draw.rect(surface, (38, 18, 10), pygame.Rect(0, PLAY_HEIGHT - 26, PLAY_WIDTH, 26))
     for fx in range(0, PLAY_WIDTH + 30, 34):
         bush_col = (118, 46, 18) if (fx // 34) % 2 == 0 else (148, 62, 22)
         pygame.draw.circle(surface, bush_col, (fx, PLAY_HEIGHT - 22), 20)
-    pygame.draw.line(surface, (176, 78, 26), (0, PLAY_HEIGHT - 26), (PLAY_WIDTH, PLAY_HEIGHT - 26), 2)
+    pygame.draw.line(
+        surface, (176, 78, 26), (0, PLAY_HEIGHT - 26), (PLAY_WIDTH, PLAY_HEIGHT - 26), 2
+    )
 
-    # 7. Ambient Falling Autumn Leaves
     for leaf in leaves:
         lx = int(leaf.x + math.sin(leaf.sway_phase) * 9.0)
         ly = int(leaf.y)
@@ -427,10 +417,14 @@ def draw_autumn_background(
 
 
 async def main() -> None:
+    pygame.mixer.pre_init(22050, -16, 1, 512)
     pygame.init()
     screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
     pygame.display.set_caption("BOUNCE BACK - Autumn Spirit")
     clock = pygame.time.Clock()
+
+    sound_manager = SoundManager()
+    sound_manager.start_music()
 
     arena_surface = pygame.Surface((PLAY_WIDTH, PLAY_HEIGHT))
 
@@ -438,6 +432,9 @@ async def main() -> None:
     font_combo = pygame.font.Font(None, 22)
     font_hint = pygame.font.Font(None, 24)
     font_popup = pygame.font.Font(None, 25)
+
+    # Top-right Mute/Unmute button inside the playable woods
+    sound_btn_rect = pygame.Rect(PLAY_WIDTH - 126, 12, 114, 32)
 
     upgrade_manager = UpgradeManager(
         panel_x=PLAY_WIDTH,
@@ -481,11 +478,19 @@ async def main() -> None:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_m:
+                sound_manager.toggle_mute()
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                # Ensures music starts in web browsers that require a click first
+                sound_manager.start_music()
+
                 mx, my = event.pos
-                if mx < PLAY_WIDTH:
+                if sound_btn_rect.collidepoint((mx, my)):
+                    sound_manager.toggle_mute()
+                elif mx < PLAY_WIDTH:
                     accepted, gusted = ghost.nudge_toward(mx, my)
                     if accepted:
+                        sound_manager.play("dash")
                         ripple_col = (120, 245, 200) if gusted else (235, 148, 56)
                         ripples.append(ClickRipple(x=float(mx), y=float(my), color=ripple_col))
                         if gusted:
@@ -499,7 +504,6 @@ async def main() -> None:
                             )
                         has_nudged_once = True
                     else:
-                        # Subtle muted ripple if player clicks while 0.8s cooldown is active
                         ripples.append(
                             ClickRipple(
                                 x=float(mx),
@@ -514,14 +518,8 @@ async def main() -> None:
                     action = upgrade_manager.handle_click(
                         (mx, my), ghost, souls, mini_ghosts
                     )
-                    if action == "soul_count":
-                        while len(souls) < upgrade_manager.soul_target_count:
-                            souls.append(
-                                spawn_soul(
-                                    PLAY_WIDTH, PLAY_HEIGHT, ghost, souls, upgrade_manager
-                                )
-                            )
-                    elif action == "rebirth":
+                    if action == "rebirth":
+                        sound_manager.play("rebirth")
                         combo_count = 0
                         combo_timer = 0.0
                         souls.clear()
@@ -562,6 +560,16 @@ async def main() -> None:
                                 life=1.40,
                             )
                         )
+                    elif action is not None:
+                        if not action.startswith("tab_"):
+                            sound_manager.play("upgrade")
+                        if action == "soul_count":
+                            while len(souls) < upgrade_manager.soul_target_count:
+                                souls.append(
+                                    spawn_soul(
+                                        PLAY_WIDTH, PLAY_HEIGHT, ghost, souls, upgrade_manager
+                                    )
+                                )
 
         # 2. Physics & State Updates
         if combo_timer > 0.0:
@@ -615,6 +623,11 @@ async def main() -> None:
                     combo_count = min(MAX_COMBO, combo_count + 1)
                     combo_timer = COMBO_WINDOW
                     ghost.trigger_chomp()
+
+                if soul.soul_type in ("golden", "devil"):
+                    sound_manager.play("eat_special")
+                else:
+                    sound_manager.play("eat")
 
                 streak_bonus = (
                     (combo_count // 4) * upgrade_manager.soul_points if eaten_by_main else 0
@@ -798,6 +811,24 @@ async def main() -> None:
 
         screen.blit(font_hud.render(speed_str, True, speed_color), (22, 19))
         screen.blit(font_hud.render(souls_str, True, (125, 245, 212)), (22, 43))
+
+        # Top-Right Sound Mute/Unmute Toggle Button (also toggled with M key)
+        btn_hovered = sound_btn_rect.collidepoint(mouse_pos)
+        btn_bg = (82, 46, 24) if btn_hovered else (62, 34, 18)
+        btn_border = (232, 158, 68) if not sound_manager.muted else (150, 86, 68)
+        pygame.draw.rect(screen, btn_bg, sound_btn_rect, border_radius=8)
+        pygame.draw.rect(screen, btn_border, sound_btn_rect, width=2, border_radius=8)
+
+        snd_label = "SOUND: OFF" if sound_manager.muted else "SOUND: ON"
+        snd_col = (225, 130, 120) if sound_manager.muted else (165, 255, 195)
+        snd_surf = font_combo.render(snd_label, True, snd_col)
+        screen.blit(
+            snd_surf,
+            (
+                sound_btn_rect.centerx - snd_surf.get_width() // 2,
+                sound_btn_rect.centery - snd_surf.get_height() // 2,
+            ),
+        )
 
         if combo_count >= 2:
             streak_label = (
